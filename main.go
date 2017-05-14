@@ -14,8 +14,10 @@ import (
 	"github.com/ungerik/go-dry"
 
 	"gopkg.in/kataras/iris.v6"
+	"gopkg.in/kataras/iris.v6/adaptors/cors"
 	"gopkg.in/kataras/iris.v6/adaptors/httprouter"
 	"gopkg.in/kataras/iris.v6/adaptors/websocket"
+	irisLogger "gopkg.in/kataras/iris.v6/middleware/logger"
 )
 
 var logger zap.Logger
@@ -81,12 +83,36 @@ func main() {
 
 	app.Adapt(ws) // adapt the websocket server, you can adapt more than one with different Endpoint
 
+	crs := cors.New(cors.Options{
+		AllowedOrigins:   []string{"*"},
+		AllowCredentials: true,
+	})
+
+	app.Adapt(crs) // this line should be added
+
+	customLogger := irisLogger.New(irisLogger.Config{
+		// Status displays status code
+		Status: true,
+		// IP displays request's remote address
+		IP: true,
+		// Method displays the http method
+		Method: true,
+		// Path displays the request path
+		Path: true,
+	})
+
+	app.Use(customLogger)
+
 	//app.StaticWeb("/js", "./static/js") // serve our custom javascript code
 	//app.StaticWeb("/pb", "./pb")
 	//
 	//app.Get("/", func(ctx *iris.Context) {
 	//	ctx.MustRender("client.html", mp.ClientPage{Title: "Client Page", Host: ctx.Host()})
 	//})
+
+	app.Post("/msg", func(ctx *iris.Context) {
+		logger.Info(ctx.FormValue("msg"))
+	})
 
 	ws.OnConnection(func(c websocket.Connection) {
 		fmt.Println("ws: new connection, ID =", c.ID())
